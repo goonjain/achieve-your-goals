@@ -7,9 +7,11 @@ import {
   type RoutePoint,
 } from "./route-geometry";
 import type {
+  Contribution,
   ErrorSample,
   ImuSample,
   LatLng,
+  MotionState,
   NavDataSource,
   NavSnapshot,
   PipelineStageId,
@@ -18,6 +20,20 @@ import type {
 const HZ = 10;
 const DT = 1 / HZ;
 const MAX_HISTORY = 400;
+
+const ROAD_NAMES = [
+  "Tonk Road",
+  "JLN Marg",
+  "Jawahar Circle Link Rd",
+  "Ring Road Bypass",
+  "Malviya Nagar Sector Rd",
+  "Sitapura Industrial Rd",
+];
+
+/** Placeholder OSM-style road label; replaced by real map data later. */
+function nearestRoadName(index: number) {
+  return ROAD_NAMES[Math.floor(index / 45) % ROAD_NAMES.length]!;
+}
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
@@ -45,6 +61,8 @@ export class SimulatedNavSource implements NavDataSource {
   private errorSum = 0;
   private errorCount = 0;
   private maxError = 0;
+  private prevHeading = 0;
+  private bumpTicks = 0;
 
   constructor() {
     this.snapshot = this.buildInitialSnapshot();
@@ -82,12 +100,44 @@ export class SimulatedNavSource implements NavDataSource {
       },
       gnss: { satellites: 14, accuracy: 3.2, last_fix_at: null },
       ai: {
-        vehicle_state: "IDLE",
+        vehicle_state: "STATIONARY",
+        motion_confidence: 0.97,
         estimated_speed: 0,
+        speed_confidence: 0.94,
         longitudinal_acceleration: 0,
+        lateral_acceleration: 0,
+        angular_velocity: 0,
         sensor_reliability: 0.95,
         vibration_level: "LOW",
         motion_classification: "VEHICLE STOPPED",
+        model_status: "active",
+      },
+      reliability: {
+        accelerometer: 0.93,
+        gyroscope: 0.96,
+        magnetometer: 0.88,
+        gnss: 0.97,
+        ai_speed: 0.94,
+        overall: 0.94,
+      },
+      fusion: {
+        ekf: "active",
+        imu_contribution: "MEDIUM",
+        imu_weight: 0.35,
+        gnss_contribution: "HIGH",
+        gnss_weight: 0.5,
+        ai_speed_contribution: "LOW",
+        ai_speed_weight: 0.15,
+        map_constraint: "idle",
+        nhc_constraint: "active",
+      },
+      map_match: {
+        status: "idle",
+        nhc: "active",
+        nearest_road: "Jawahar Circle Link Rd",
+        road_heading: p.heading,
+        distance_from_road: 1.2,
+        match_confidence: 0.95,
       },
       route: this.route.map((r) => ({ lat: r.lat, lng: r.lng })),
       gnss_track: [{ lat: p.lat, lng: p.lng }],
@@ -96,6 +146,8 @@ export class SimulatedNavSource implements NavDataSource {
       outage_segment: [],
       error_history: [],
       imu_history: [],
+      motion_history: [],
+
       metrics: {
         final_position_error: 0,
         rmse: 0,
@@ -194,6 +246,8 @@ export class SimulatedNavSource implements NavDataSource {
     this.errorSum = 0;
     this.errorCount = 0;
     this.maxError = 0;
+    this.prevHeading = 0;
+    this.bumpTicks = 0;
     this.snapshot = this.buildInitialSnapshot();
     this.emit();
   }
@@ -284,10 +338,42 @@ export class SimulatedNavSource implements NavDataSource {
       ekf: ekfError,
       map_matched: matchedError,
     };
+    // --- raw IMU signal synthesis ------------------------------------------
+    const headingDelta = ((truth.heading - this.prevHeading + 540) % 360) - 180;
+    this.prevHeading = truth.heading;
+    const yawRate = (headingDelta * Math.PI) / 180 / DT; // rad/s
+    const lateral = (this.speed / 3.6) * yawRate;
+
+    // occasional road bump / pothole event
+    if (this.bumpTicks > 0) this.bumpTicks -= 1;
+    else if (Math.random() < 0.004) this.bumpTicks = 8;
+    const bump = this.bumpTicks > 0 ? (Math.random() - 0.5) * 5.5 : 0;
+
+    const noise = () => (Math.random() - 0.5) * 0.22;
+    const ax = this.accel + noise();
+    const ay = lateral + noise();
+    const az = 9.81 + bump + noise() * 1.4;
+    const gx = noise() * 0.12;
+    const gy = noise() * 0.12;
+    const gz = yawRate + noise() * 0.05;
+    const accelMag = Math.sqrt(ax * ax + ay * ay + (az - 9.81) * (az - 9.81));
+    const gyroMag = Math.sqrt(gx * gx + gy * gy + gz * gz);
+    const vibration = Math.abs(bump) > 1.6 ? "HIGH" : this.speed > 78 ? "MEDIUM" : "LOW";
+
     const imuSample: ImuSample = {
       t: Number(this.t.toFixed(1)),
-      accel: Number((this.accel + (Math.random() - 0.5) * 0.25).toFixed(3)),
+      accel: Number(ax.toFixed(3)),
+      ax: Number(ax.toFixed(3)),
+      ay: Number(ay.toFixed(3)),
+      az: Number(az.toFixed(3)),
+      gx: Number(gx.toFixed(3)),
+      gy: Number(gy.toFixed(3)),
+      gz: Number(gz.toFixed(3)),
+      accel_mag: Number(accelMag.toFixed(3)),
+      gyro_mag: Number(gyroMag.toFixed(3)),
       ai_speed: Number((this.speed - 0.6 + (Math.random() - 0.5) * 1.1).toFixed(2)),
+      // GNSS speed is only a reference; it is null (and unused) during outage.
+      gnss_speed: outage ? null : Number((this.speed + (Math.random() - 0.5) * 0.9).toFixed(2)),
     };
     const trim = <T,>(arr: T[], sample: T) =>
       [...(arr.length >= MAX_HISTORY ? arr.slice(-MAX_HISTORY + 1) : arr), sample];
@@ -305,14 +391,61 @@ export class SimulatedNavSource implements NavDataSource {
         ]
       : ["sensors", "preprocessing", "ai_motion", "integrity", "ekf", "position", "confidence"];
 
-    const vehicleState =
-      this.speed < 2
-        ? "IDLE"
-        : this.accel > 0.6
-          ? "ACCELERATING"
-          : this.accel < -0.6
-            ? "BRAKING"
-            : "CRUISING";
+    // --- motion detector ---------------------------------------------------
+    const vehicleState: MotionState =
+      this.speed < 1.5
+        ? "STATIONARY"
+        : vibration === "HIGH"
+          ? "BUMP"
+          : Math.abs(gz) > 0.09
+            ? "TURNING"
+            : this.accel > 0.6
+              ? "ACCELERATING"
+              : this.accel < -0.6
+                ? "BRAKING"
+                : Math.abs(this.accel) < 0.25
+                  ? "CRUISING"
+                  : "MOVING";
+
+    const motionConfidence = clamp(
+      0.97 - Math.abs(bump) * 0.03 - (vehicleState === "MOVING" ? 0.05 : 0),
+      0.72,
+      0.99,
+    );
+    const lastMotion = s.motion_history[s.motion_history.length - 1];
+    const motionHistory =
+      lastMotion && lastMotion.state === vehicleState
+        ? s.motion_history
+        : [
+            ...s.motion_history.slice(-11),
+            {
+              t: Number(this.t.toFixed(1)),
+              state: vehicleState,
+              confidence: Number(motionConfidence.toFixed(2)),
+            },
+          ];
+
+    // --- sensor reliability -> adaptive fusion weighting -------------------
+    const accelRel = clamp(0.95 - Math.abs(bump) * 0.05, 0.6, 0.98);
+    const gyroRel = clamp(0.97 - Math.abs(gyroMag) * 0.04, 0.7, 0.99);
+    const magRel = clamp(0.88 + Math.sin(this.t / 7) * 0.05, 0.7, 0.95);
+    const gnssRel = outage ? 0 : clamp(0.97 - (s.gnss.accuracy - 3) * 0.03, 0.7, 0.99);
+    const aiSpeedRel = clamp(0.95 - (outage ? outageSeconds * 0.0018 : 0), 0.78, 0.97);
+    const relSum = accelRel + gyroRel + magRel + gnssRel + aiSpeedRel;
+    const overallRel = relSum / 5;
+
+    // weights are normalised from the live reliability scores
+    const wImu = (accelRel + gyroRel) / 2;
+    const wGnss = gnssRel;
+    const wAi = aiSpeedRel;
+    const wTotal = wImu + wGnss + wAi;
+    const contribution = (w: number): Contribution =>
+      w <= 0.02 ? "NONE" : w > 0.4 ? "HIGH" : w > 0.22 ? "MEDIUM" : "LOW";
+    const imuWeight = wImu / wTotal;
+    const gnssWeight = wGnss / wTotal;
+    const aiWeight = wAi / wTotal;
+
+    const roadDistance = metresBetween(ekfPos, matchedPos);
 
     this.snapshot = {
       ...s,
@@ -335,7 +468,7 @@ export class SimulatedNavSource implements NavDataSource {
         sensor_status: {
           accelerometer: "active",
           gyroscope: "active",
-          magnetometer: outage ? "active" : "active",
+          magnetometer: "active",
           gnss: outage ? "lost" : "available",
           ai_speed_estimator: "active",
           error_state_ekf: "active",
@@ -350,11 +483,43 @@ export class SimulatedNavSource implements NavDataSource {
       },
       ai: {
         vehicle_state: vehicleState,
+        motion_confidence: Number(motionConfidence.toFixed(2)),
         estimated_speed: imuSample.ai_speed,
-        longitudinal_acceleration: imuSample.accel,
-        sensor_reliability: Number((outage ? 0.9 : 0.94).toFixed(2)),
-        vibration_level: this.speed > 78 ? "MEDIUM" : "LOW",
+        speed_confidence: Number(aiSpeedRel.toFixed(2)),
+        longitudinal_acceleration: Number(ax.toFixed(2)),
+        lateral_acceleration: Number(ay.toFixed(2)),
+        angular_velocity: Number(gz.toFixed(3)),
+        sensor_reliability: Number(overallRel.toFixed(2)),
+        vibration_level: vibration,
         motion_classification: this.speed > 1.5 ? "VEHICLE MOVING" : "VEHICLE STOPPED",
+        model_status: "active",
+      },
+      reliability: {
+        accelerometer: Number(accelRel.toFixed(2)),
+        gyroscope: Number(gyroRel.toFixed(2)),
+        magnetometer: Number(magRel.toFixed(2)),
+        gnss: Number(gnssRel.toFixed(2)),
+        ai_speed: Number(aiSpeedRel.toFixed(2)),
+        overall: Number(overallRel.toFixed(2)),
+      },
+      fusion: {
+        ekf: "active",
+        imu_contribution: contribution(imuWeight),
+        imu_weight: Number(imuWeight.toFixed(3)),
+        gnss_contribution: contribution(gnssWeight),
+        gnss_weight: Number(gnssWeight.toFixed(3)),
+        ai_speed_contribution: contribution(aiWeight),
+        ai_speed_weight: Number(aiWeight.toFixed(3)),
+        map_constraint: "active",
+        nhc_constraint: "active",
+      },
+      map_match: {
+        status: "active",
+        nhc: "active",
+        nearest_road: nearestRoadName(this.index),
+        road_heading: Number(truth.heading.toFixed(0)),
+        distance_from_road: Number(roadDistance.toFixed(1)),
+        match_confidence: Number(clamp(0.97 - roadDistance * 0.02, 0.68, 0.99).toFixed(2)),
       },
       gnss_track: gnssTrack,
       raw_dr_track: rawTrack,
@@ -362,6 +527,8 @@ export class SimulatedNavSource implements NavDataSource {
       outage_segment: outageSegment,
       error_history: trim(s.error_history, errorSample),
       imu_history: trim(s.imu_history, imuSample),
+      motion_history: motionHistory,
+
       metrics: {
         final_position_error: Number(activeError.toFixed(2)),
         rmse: Number(Math.sqrt(this.errorSum / Math.max(1, this.errorCount)).toFixed(2)),
