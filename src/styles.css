@@ -59,42 +59,62 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-track-gnss: var(--track-gnss);
+  --color-track-raw: var(--track-raw);
+  --color-track-fused: var(--track-fused);
+  --color-track-truth: var(--track-truth);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-panel: var(--panel);
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --radius: 0.5rem;
+  --background: oklch(0.975 0.004 250);
+  --foreground: oklch(0.19 0.03 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.19 0.03 260);
+  --panel: oklch(0.992 0.003 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --popover-foreground: oklch(0.19 0.03 260);
+  --primary: oklch(0.46 0.15 255);
+  --primary-foreground: oklch(0.99 0.003 250);
+  --secondary: oklch(0.945 0.008 250);
+  --secondary-foreground: oklch(0.24 0.035 260);
+  --muted: oklch(0.955 0.006 250);
+  --muted-foreground: oklch(0.47 0.02 258);
+  --accent: oklch(0.93 0.03 235);
+  --accent-foreground: oklch(0.24 0.05 255);
+  --destructive: oklch(0.55 0.21 26);
+  --destructive-foreground: oklch(0.99 0.003 250);
+  --warning: oklch(0.68 0.16 62);
+  --warning-foreground: oklch(0.22 0.05 60);
+  --success: oklch(0.56 0.13 155);
+  --success-foreground: oklch(0.99 0.003 250);
+  --track-gnss: oklch(0.52 0.17 252);
+  --track-raw: oklch(0.62 0.19 45);
+  --track-fused: oklch(0.52 0.14 165);
+  --track-truth: oklch(0.55 0.02 260);
+  --border: oklch(0.9 0.012 252);
+  --input: oklch(0.9 0.012 252);
+  --ring: oklch(0.46 0.15 255);
+  --chart-1: oklch(0.52 0.17 252);
+  --chart-2: oklch(0.62 0.19 45);
+  --chart-3: oklch(0.52 0.14 165);
+  --chart-4: oklch(0.55 0.21 26);
+  --chart-5: oklch(0.55 0.02 260);
   --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --sidebar-foreground: oklch(0.19 0.03 260);
+  --sidebar-primary: oklch(0.46 0.15 255);
+  --sidebar-primary-foreground: oklch(0.99 0.003 250);
+  --sidebar-accent: oklch(0.945 0.008 250);
+  --sidebar-accent-foreground: oklch(0.24 0.035 260);
+  --sidebar-border: oklch(0.9 0.012 252);
+  --sidebar-ring: oklch(0.46 0.15 255);
 }
 
 .dark {
@@ -141,4 +161,45 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+}
+
+@utility panel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 2px oklch(0.19 0.03 260 / 6%), 0 8px 24px oklch(0.19 0.03 260 / 4%);
+}
+
+@utility label-caps {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+@utility readout {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--color-foreground);
+}
+
+.leaflet-container {
+  background: var(--color-muted);
+  font-family: var(--font-mono);
 }
