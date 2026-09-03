@@ -55,7 +55,7 @@ export class SimulatedNavSource implements NavDataSource {
     return {
       running: false,
       frame: {
-        timestamp: Date.now(),
+        timestamp: 0,
         latitude: p.lat,
         longitude: p.lng,
         speed: 0,
@@ -80,7 +80,7 @@ export class SimulatedNavSource implements NavDataSource {
         },
         position_error: 1.4,
       },
-      gnss: { satellites: 14, accuracy: 3.2, last_fix_at: Date.now() },
+      gnss: { satellites: 14, accuracy: 3.2, last_fix_at: null },
       ai: {
         vehicle_state: "IDLE",
         estimated_speed: 0,
