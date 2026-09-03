@@ -1,6 +1,6 @@
 # Navigation Intelligence System — SIH26168 Dashboard
 
-A single-page dark engineering dashboard that demonstrates continuous vehicle positioning during a GNSS outage, driven by a simulated navigation engine that can later be swapped for real data from your Python engine or Android app.
+A single-page  engineering dashboard (white background or light color background with bsuitable and matching bold dark color fonts)  that demonstrates continuous vehicle positioning during a GNSS outage, driven by a simulated navigation engine that can later be swapped for real data from your Python engine or Android app.
 
 ## Layout (one page, `/`)
 
