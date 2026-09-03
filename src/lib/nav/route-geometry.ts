@@ -73,18 +73,34 @@ export function sampleRoute(route: RoutePoint[], index: number): RoutePoint {
   };
 }
 
-/** Cheap map-matching: snap an estimate onto the nearest road point. */
+/**
+ * Map matching: project an estimate perpendicularly onto the nearest road
+ * segment, removing lateral error while keeping along-track continuity.
+ */
 export function snapToRoute(route: RoutePoint[], p: LatLng, aroundIndex: number): LatLng {
-  const from = Math.max(0, Math.floor(aroundIndex) - 12);
-  const to = Math.min(route.length - 1, Math.ceil(aroundIndex) + 12);
+  const from = Math.max(0, Math.floor(aroundIndex) - 6);
+  const to = Math.min(route.length - 2, Math.ceil(aroundIndex) + 6);
   let best: LatLng = route[from]!;
   let bestDist = Number.POSITIVE_INFINITY;
+
   for (let i = from; i <= to; i += 1) {
-    const d = metresBetween(route[i]!, p);
+    const a = route[i]!;
+    const b = route[i + 1]!;
+    const ax = a.lng;
+    const ay = a.lat;
+    const vx = b.lng - ax;
+    const vy = b.lat - ay;
+    const wx = p.lng - ax;
+    const wy = p.lat - ay;
+    const len2 = vx * vx + vy * vy;
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (wx * vx + wy * vy) / len2));
+    const candidate: LatLng = { lat: ay + vy * t, lng: ax + vx * t };
+    const d = metresBetween(candidate, p);
     if (d < bestDist) {
       bestDist = d;
-      best = route[i]!;
+      best = candidate;
     }
   }
-  return { lat: best.lat, lng: best.lng };
+
+  return best;
 }
