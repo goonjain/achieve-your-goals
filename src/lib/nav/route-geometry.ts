@@ -63,8 +63,8 @@ export function sampleRoute(route: RoutePoint[], index: number): RoutePoint {
   const clamped = Math.max(0, Math.min(route.length - 1.001, index));
   const i = Math.floor(clamped);
   const f = clamped - i;
-  const a = route[i];
-  const b = route[Math.min(route.length - 1, i + 1)];
+  const a = route[i]!;
+  const b = route[Math.min(route.length - 1, i + 1)]!;
   return {
     lat: a.lat + (b.lat - a.lat) * f,
     lng: a.lng + (b.lng - a.lng) * f,
@@ -77,13 +77,13 @@ export function sampleRoute(route: RoutePoint[], index: number): RoutePoint {
 export function snapToRoute(route: RoutePoint[], p: LatLng, aroundIndex: number): LatLng {
   const from = Math.max(0, Math.floor(aroundIndex) - 12);
   const to = Math.min(route.length - 1, Math.ceil(aroundIndex) + 12);
-  let best = route[from];
+  let best: LatLng = route[from]!;
   let bestDist = Number.POSITIVE_INFINITY;
   for (let i = from; i <= to; i += 1) {
-    const d = metresBetween(route[i], p);
+    const d = metresBetween(route[i]!, p);
     if (d < bestDist) {
       bestDist = d;
-      best = route[i];
+      best = route[i]!;
     }
   }
   return { lat: best.lat, lng: best.lng };
