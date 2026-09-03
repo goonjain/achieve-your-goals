@@ -53,7 +53,7 @@ export default function LeafletMap({ snapshot }: { snapshot: NavSnapshot }) {
   return (
     <MapContainer
       center={toTuple({ lat: f.latitude, lng: f.longitude })}
-      zoom={16}
+      zoom={15}
       zoomControl={false}
       className="h-full w-full"
       preferCanvas
