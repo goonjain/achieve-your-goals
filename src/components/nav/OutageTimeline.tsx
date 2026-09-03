@@ -17,10 +17,9 @@ export function OutageTimeline({ snapshot }: { snapshot: NavSnapshot }) {
     <Panel title="GNSS Outage Timeline" bodyClassName="space-y-3">
       <ol className="grid gap-2 md:grid-cols-4">
         {steps.map((s, i) => {
-          const activeIdx = o.active ? (i === 1 || i === 2 ? i : -1) : stage;
-          const isCurrent = o.active ? i === 2 || i === 1 : i === stage;
-          const done = i < (o.active ? 2 : stage);
-          void activeIdx;
+          const current = o.active ? 2 : stage;
+          const isCurrent = i === current;
+          const done = i < current;
           return (
             <li
               key={s.title}
