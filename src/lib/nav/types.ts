@@ -174,6 +174,9 @@ export interface NavSnapshot {
   frame: NavFrame;
   gnss: GnssMeta;
   ai: AiMotionState;
+  reliability: SensorReliability;
+  fusion: FusionState;
+  map_match: MapMatchState;
   route: LatLng[];
   gnss_track: LatLng[];
   raw_dr_track: LatLng[];
@@ -181,6 +184,8 @@ export interface NavSnapshot {
   outage_segment: LatLng[];
   error_history: ErrorSample[];
   imu_history: ImuSample[];
+  motion_history: MotionEvent[];
+
   metrics: PerformanceMetrics;
   active_stages: PipelineStageId[];
 }
