@@ -7,9 +7,11 @@ import {
   type RoutePoint,
 } from "./route-geometry";
 import type {
+  Contribution,
   ErrorSample,
   ImuSample,
   LatLng,
+  MotionState,
   NavDataSource,
   NavSnapshot,
   PipelineStageId,
@@ -18,6 +20,20 @@ import type {
 const HZ = 10;
 const DT = 1 / HZ;
 const MAX_HISTORY = 400;
+
+const ROAD_NAMES = [
+  "Tonk Road",
+  "JLN Marg",
+  "Jawahar Circle Link Rd",
+  "Ring Road Bypass",
+  "Malviya Nagar Sector Rd",
+  "Sitapura Industrial Rd",
+];
+
+/** Placeholder OSM-style road label; replaced by real map data later. */
+function nearestRoadName(index: number) {
+  return ROAD_NAMES[Math.floor(index / 45) % ROAD_NAMES.length]!;
+}
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
@@ -45,6 +61,8 @@ export class SimulatedNavSource implements NavDataSource {
   private errorSum = 0;
   private errorCount = 0;
   private maxError = 0;
+  private prevHeading = 0;
+  private bumpTicks = 0;
 
   constructor() {
     this.snapshot = this.buildInitialSnapshot();
@@ -228,6 +246,8 @@ export class SimulatedNavSource implements NavDataSource {
     this.errorSum = 0;
     this.errorCount = 0;
     this.maxError = 0;
+    this.prevHeading = 0;
+    this.bumpTicks = 0;
     this.snapshot = this.buildInitialSnapshot();
     this.emit();
   }
