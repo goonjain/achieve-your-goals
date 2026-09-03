@@ -123,11 +123,31 @@ export interface ErrorSample {
   map_matched: number;
 }
 
+/** One 10 Hz sample of raw IMU signals plus derived speed estimates. */
 export interface ImuSample {
   t: number;
+  /** longitudinal acceleration (legacy field, kept for existing charts) */
   accel: number;
+  ax: number;
+  ay: number;
+  az: number;
+  gx: number;
+  gy: number;
+  gz: number;
+  accel_mag: number;
+  gyro_mag: number;
   ai_speed: number;
+  /** null while GNSS is unavailable — never used as an estimator input then */
+  gnss_speed: number | null;
 }
+
+/** One entry of the motion state machine timeline. */
+export interface MotionEvent {
+  t: number;
+  state: MotionState;
+  confidence: number;
+}
+
 
 export interface PerformanceMetrics {
   final_position_error: number;
