@@ -28,14 +28,66 @@ export interface OutageStatus {
   recovered_at: number | null;
 }
 
+/** Motion states classified by the AI motion detector. */
+export type MotionState =
+  | "STATIONARY"
+  | "MOVING"
+  | "ACCELERATING"
+  | "CRUISING"
+  | "BRAKING"
+  | "TURNING"
+  | "BUMP"
+  | "HIGH VIBRATION";
+
 export interface AiMotionState {
-  vehicle_state: "IDLE" | "ACCELERATING" | "CRUISING" | "BRAKING" | "TURNING";
+  vehicle_state: MotionState;
+  motion_confidence: number;
   estimated_speed: number;
+  speed_confidence: number;
   longitudinal_acceleration: number;
+  lateral_acceleration: number;
+  angular_velocity: number;
   sensor_reliability: number;
   vibration_level: "LOW" | "MEDIUM" | "HIGH";
   motion_classification: "VEHICLE STOPPED" | "VEHICLE MOVING";
+  model_status: ModuleStatus;
 }
+
+/** Per-sensor reliability scores (0..1) driving the fusion weighting. */
+export interface SensorReliability {
+  accelerometer: number;
+  gyroscope: number;
+  magnetometer: number;
+  gnss: number;
+  ai_speed: number;
+  overall: number;
+}
+
+export type Contribution = "NONE" | "LOW" | "MEDIUM" | "HIGH";
+
+/** Adaptive fusion engine state. */
+export interface FusionState {
+  ekf: ModuleStatus;
+  imu_contribution: Contribution;
+  imu_weight: number;
+  gnss_contribution: Contribution;
+  gnss_weight: number;
+  ai_speed_contribution: Contribution;
+  ai_speed_weight: number;
+  map_constraint: ModuleStatus;
+  nhc_constraint: ModuleStatus;
+}
+
+/** Map matching / non-holonomic constraint state. */
+export interface MapMatchState {
+  status: ModuleStatus;
+  nhc: ModuleStatus;
+  nearest_road: string;
+  road_heading: number;
+  distance_from_road: number;
+  match_confidence: number;
+}
+
 
 /** The frame emitted by the navigation engine, ~10 Hz. */
 export interface NavFrame {
